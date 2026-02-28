@@ -2,12 +2,12 @@
 
 ## What this project is
 An in-house project management and reporting tool for implementation teams.
-Full spec: `IMPLPILOT_MVP_SPEC_v1.1.md`
-Working guide and session prompts: `CLAUDE_CODE_WORKING_GUIDE_v1.1.md`
+Full spec: `IMPLPILOT_MVP_SPEC_v1.2.md`
+Working guide and session prompts: `CLAUDE_CODE_WORKING_GUIDE_v1.2.md`
 
 ## Read these first, every session
-1. Read `CLAUDE_CODE_WORKING_GUIDE_v1.1.md` — this governs how you work
-2. Read `IMPLPILOT_MVP_SPEC_v1.1.md` — this is the source of truth for what to build
+1. Read `CLAUDE_CODE_WORKING_GUIDE_v1.2.md` — this governs how you work
+2. Read `IMPLPILOT_MVP_SPEC_v1.2.md` — this is the source of truth for what to build
 
 ## Non-negotiable rules (summary — full detail in working guide)
 - Output a plan and wait for "go" before writing any code
