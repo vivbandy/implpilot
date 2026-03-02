@@ -112,7 +112,7 @@ async def seed_admin_user(db: AsyncSession) -> None:
     """Create default admin user if it doesn't exist."""
     # Check if admin user already exists
     result = await db.execute(
-        select(User).where(User.email == "admin@implpilot.local")
+        select(User).where(User.email == "admin@example.com")
     )
     existing_user = result.scalar_one_or_none()
 
@@ -122,7 +122,7 @@ async def seed_admin_user(db: AsyncSession) -> None:
 
     # Create admin user
     admin_user = User(
-        email="admin@implpilot.local",
+        email="admin@example.com",
         username="admin",
         password_hash=pwd_context.hash("admin123"),  # Change this in production!
         full_name="Admin User",
@@ -132,7 +132,7 @@ async def seed_admin_user(db: AsyncSession) -> None:
 
     db.add(admin_user)
     await db.commit()
-    print("✓ Created admin user (email: admin@implpilot.local, password: admin123)")
+    print("✓ Created admin user (email: admin@example.com, password: admin123)")
 
 
 async def seed_tag_definitions(db: AsyncSession) -> None:
