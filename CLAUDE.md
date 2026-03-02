@@ -40,8 +40,8 @@ You:
   → close session
 
 ## Current build status
-Step completed: 1 — Backend Foundation
-Next step: Step 2 — Auth Module
+Step completed: 2 — Auth Module
+Next step: Step 3 — Projects + Phases Module
 
 ## Model
 Use Sonnet 4.6 (default on Pro). Keep sessions scoped to one step at a time
