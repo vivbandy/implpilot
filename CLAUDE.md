@@ -40,8 +40,8 @@ You:
   → close session
 
 ## Current build status
-Step completed: 2 — Auth Module
-Next step: Step 3 — Projects + Phases Module
+Step completed: 3 — Projects + Phases Module
+Next step: Step 4 — Tag System
 
 ## Model
 Use Sonnet 4.6 (default on Pro). Keep sessions scoped to one step at a time
