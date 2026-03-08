@@ -250,6 +250,55 @@ task_assignees
 - Sub-tasks can have their own assignees, notes, attachments, and external tickets.
 - Health score computation counts sub-tasks as tasks for overdue/blocked calculations.
 
+**Pydantic response schemas:**
+
+```python
+class SubTaskResponse(BaseModel):
+    """No sub_tasks field — max nesting depth is 1. A sub-task response never carries children."""
+    id: UUID
+    project_id: UUID
+    phase_id: UUID
+    parent_task_id: UUID        # always non-null
+    title: str
+    description: str | None
+    status: TaskStatus
+    priority: TaskPriority
+    start_date: date | None
+    due_date: date | None
+    completed_at: datetime | None
+    matrix_quadrant: MatrixQuadrant | None   # always None for sub-tasks
+    matrix_override: bool
+    order: int
+    created_by: UUID | None
+    created_at: datetime
+    updated_at: datetime
+    assignee_ids: list[UUID] = []
+
+class TaskResponse(BaseModel):
+    """Top-level task response. sub_tasks typed as list[SubTaskResponse], not list[TaskResponse]."""
+    id: UUID
+    project_id: UUID
+    phase_id: UUID
+    parent_task_id: UUID | None  # None for top-level tasks
+    title: str
+    description: str | None
+    status: TaskStatus
+    priority: TaskPriority
+    start_date: date | None
+    due_date: date | None
+    completed_at: datetime | None
+    matrix_quadrant: MatrixQuadrant | None
+    matrix_override: bool
+    order: int
+    created_by: UUID | None
+    created_at: datetime
+    updated_at: datetime
+    assignee_ids: list[UUID] = []
+    sub_tasks: list[SubTaskResponse] = []   # SubTaskResponse, not TaskResponse
+```
+
+`GET /tasks/{id}` returns `TaskResponse` when `parent_task_id` is null, `SubTaskResponse` when non-null.
+
 ---
 
 ### 3.5 Notes
@@ -1179,6 +1228,7 @@ ZENDESK_API_TOKEN=
 - **Backend**: Type hints everywhere. Pydantic v2 schemas. No raw SQL. Services contain logic; routers are thin.
 - **Phase enforcement**: `phase_service.py` is the only place that transitions phase status. No other service should directly write `phases.status`.
 - **Sub-task enforcement**: `task_service.py` enforces max depth at create time. Reject with HTTP 422 if `parent_task_id` points to a task that already has a parent.
+- **Sub-task response schema**: `GET /tasks/{id}` returns `TaskResponse` (with `sub_tasks: list[SubTaskResponse]`) when `parent_task_id` is null, and `SubTaskResponse` (no `sub_tasks` field) when non-null. The type distinction at the schema layer enforces that sub-task objects in any API response can never carry children, matching the max-depth-1 rule.
 - **Tag processing**: Always in a `BackgroundTask` — never blocks note/task write response.
 - **Frontend**: TypeScript strict mode. No `any`. Components under 200 lines.
 - **Design**: Use token classes (`bg-surface`, `text-primary`, etc.) everywhere. Never hardcode hex colors in components.
