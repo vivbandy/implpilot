@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, health, phases, projects
+from app.routers import attachments, auth, health, notes, phases, projects, tags
 
 app = FastAPI(
     title="ImplPilot API",
@@ -25,6 +25,9 @@ app.include_router(health.router, prefix="/api/v1", tags=["health"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(phases.router, prefix="/api/v1/phases", tags=["phases"])
+app.include_router(tags.router, prefix="/api/v1/tags", tags=["tags"])
+app.include_router(notes.router, prefix="/api/v1/notes", tags=["notes"])
+app.include_router(attachments.router, prefix="/api/v1/attachments", tags=["attachments"])
 
 
 @app.get("/")
