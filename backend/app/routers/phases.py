@@ -1,4 +1,4 @@
-"""Phase endpoints: list, detail, update, complete."""
+"""Phase endpoints: list, detail, update, complete, and task management."""
 from typing import Annotated
 from uuid import UUID
 
@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
 from app.schemas.phase import PhaseResponse, PhaseUpdate, PhaseWithTaskCounts
+from app.schemas.task import TaskCreate, TaskResponse
 from app.services import phase_service
+from app.services import task_service
 from app.utils.dependencies import get_current_user
 
 
@@ -143,3 +145,42 @@ async def complete_phase(
             detail="Phase not found",
         )
     return phase
+
+
+@router.post("/{phase_id}/tasks", response_model=TaskResponse, status_code=201)
+async def create_task_in_phase(
+    phase_id: UUID,
+    payload: TaskCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TaskResponse:
+    """
+    Create a top-level task in a phase.
+
+    The task's project_id is derived from the phase — no need to pass it separately.
+    Matrix quadrant is computed immediately via deterministic classification.
+    """
+    from app.routers.tasks import _task_to_response
+    task = await task_service.create_task(
+        phase_id=phase_id,
+        payload=payload,
+        created_by=current_user.id,
+        db=db,
+    )
+    return await _task_to_response(task, db)
+
+
+@router.get("/{phase_id}/tasks", response_model=list[TaskResponse])
+async def list_tasks_in_phase(
+    phase_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[TaskResponse]:
+    """
+    List all top-level tasks for a phase, ordered by order then created_at.
+
+    Sub-tasks are nested inside each task's sub_tasks field as SubTaskResponse objects.
+    """
+    from app.routers.tasks import _task_to_response
+    tasks = await task_service.get_tasks_for_phase(phase_id, db, top_level_only=True)
+    return [await _task_to_response(t, db) for t in tasks]

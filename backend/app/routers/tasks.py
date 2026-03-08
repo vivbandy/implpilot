@@ -1,16 +1,18 @@
 """Tasks router — task CRUD, sub-tasks, assignees, and Eisenhower matrix."""
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import (
     MatrixClassifyRequest,
     MatrixClassifyResponse,
     SubTaskCreate,
-    TaskOut,
+    SubTaskResponse,
+    TaskResponse,
     TaskUpdate,
 )
 from app.services import task_service
@@ -19,13 +21,13 @@ from app.utils.dependencies import get_current_user
 router = APIRouter()
 
 
-# ─── Task detail, update, delete ──────────────────────────────────────────────
+# ─── Matrix ───────────────────────────────────────────────────────────────────
 
-@router.get("/my-matrix", response_model=list[TaskOut])
+@router.get("/my-matrix", response_model=list[TaskResponse])
 async def get_my_matrix(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[TaskOut]:
+) -> list[TaskResponse]:
     """
     Return top-level tasks assigned to the current user for the Eisenhower matrix.
 
@@ -36,7 +38,7 @@ async def get_my_matrix(
     from matching 'my-matrix' as a UUID path parameter.
     """
     tasks = await task_service.get_my_matrix(current_user.id, db)
-    return [await _task_to_out(t, db) for t in tasks]
+    return [await _task_to_response(t, db) for t in tasks]
 
 
 @router.post("/matrix-classify", response_model=MatrixClassifyResponse)
@@ -45,11 +47,7 @@ async def matrix_classify(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> MatrixClassifyResponse:
-    """
-    Re-run deterministic Eisenhower classification for a top-level task.
-
-    Clears any manual override and recomputes the quadrant.
-    """
+    """Re-run deterministic Eisenhower classification for a top-level task."""
     task, reasoning = await task_service.matrix_classify(payload.task_id, db)
     return MatrixClassifyResponse(
         task_id=task.id,
@@ -58,27 +56,38 @@ async def matrix_classify(
     )
 
 
-@router.get("/{task_id}", response_model=TaskOut)
+# ─── Task CRUD ────────────────────────────────────────────────────────────────
+
+@router.get("/{task_id}", response_model=TaskResponse | SubTaskResponse)
 async def get_task(
     task_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> TaskOut:
-    """Return task detail including sub_tasks and assignee_ids."""
+) -> TaskResponse | SubTaskResponse:
+    """
+    Return task detail.
+
+    Returns TaskResponse (with sub_tasks) for top-level tasks.
+    Returns SubTaskResponse (no sub_tasks field) for sub-tasks.
+    """
     task = await task_service.get_task(task_id, db)
-    return await _task_to_out(task, db)
+    if task.parent_task_id is None:
+        return await _task_to_response(task, db)
+    return await _subtask_to_response(task, db)
 
 
-@router.put("/{task_id}", response_model=TaskOut)
+@router.put("/{task_id}", response_model=TaskResponse | SubTaskResponse)
 async def update_task(
     task_id: uuid.UUID,
     payload: TaskUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> TaskOut:
-    """Update a task. Automatically re-classifies matrix quadrant unless overridden."""
+) -> TaskResponse | SubTaskResponse:
+    """Update a task. Re-classifies matrix quadrant for top-level tasks unless overridden."""
     task = await task_service.update_task(task_id, payload, db)
-    return await _task_to_out(task, db)
+    if task.parent_task_id is None:
+        return await _task_to_response(task, db)
+    return await _subtask_to_response(task, db)
 
 
 @router.delete("/{task_id}", status_code=204)
@@ -93,13 +102,13 @@ async def delete_task(
 
 # ─── Sub-tasks ────────────────────────────────────────────────────────────────
 
-@router.post("/{task_id}/subtasks", response_model=TaskOut, status_code=201)
+@router.post("/{task_id}/subtasks", response_model=SubTaskResponse, status_code=201)
 async def create_subtask(
     task_id: uuid.UUID,
     payload: SubTaskCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> TaskOut:
+) -> SubTaskResponse:
     """
     Create a sub-task under a top-level task.
 
@@ -112,20 +121,19 @@ async def create_subtask(
         created_by=current_user.id,
         db=db,
     )
-    return await _task_to_out(subtask, db)
+    return await _subtask_to_response(subtask, db)
 
 
-@router.get("/{task_id}/subtasks", response_model=list[TaskOut])
+@router.get("/{task_id}/subtasks", response_model=list[SubTaskResponse])
 async def list_subtasks(
     task_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[TaskOut]:
+) -> list[SubTaskResponse]:
     """List all sub-tasks for a given task."""
-    # Verify parent exists first
-    await task_service.get_task(task_id, db)
+    await task_service.get_task(task_id, db)  # verify parent exists
     subtasks = await task_service.get_subtasks(task_id, db)
-    return [await _task_to_out(t, db) for t in subtasks]
+    return [await _subtask_to_response(t, db) for t in subtasks]
 
 
 # ─── Assignees ────────────────────────────────────────────────────────────────
@@ -152,31 +160,37 @@ async def remove_assignee(
     await task_service.remove_assignee(task_id, user_id, db)
 
 
-# ─── Helper ───────────────────────────────────────────────────────────────────
+# ─── Response builders ────────────────────────────────────────────────────────
 
-async def _task_to_out(task, db: AsyncSession) -> TaskOut:
+async def _task_to_response(task: Task, db: AsyncSession) -> TaskResponse:
     """
-    Build a TaskOut with assignee_ids and sub_tasks populated.
+    Build a TaskResponse for a top-level task.
 
-    sub_tasks are only loaded for top-level tasks — sub-tasks don't have sub-tasks.
+    Populates assignee_ids and sub_tasks (as SubTaskResponse — no children).
+    Only called for tasks where parent_task_id is None.
+    """
+    assignee_ids = await task_service.get_assignee_ids(task.id, db)
+    children = await task_service.get_subtasks(task.id, db)
+    sub_tasks = [await _subtask_to_response(c, db) for c in children]
+
+    return TaskResponse(
+        **{f: getattr(task, f) for f in TaskResponse.model_fields
+           if f not in ("assignee_ids", "sub_tasks") and hasattr(task, f)},
+        assignee_ids=assignee_ids,
+        sub_tasks=sub_tasks,
+    )
+
+
+async def _subtask_to_response(task: Task, db: AsyncSession) -> SubTaskResponse:
+    """
+    Build a SubTaskResponse for a sub-task.
+
+    No sub_tasks field — sub-tasks cannot have children.
     """
     assignee_ids = await task_service.get_assignee_ids(task.id, db)
 
-    sub_tasks: list[TaskOut] = []
-    if task.parent_task_id is None:
-        children = await task_service.get_subtasks(task.id, db)
-        for child in children:
-            child_assignee_ids = await task_service.get_assignee_ids(child.id, db)
-            sub_tasks.append(TaskOut(
-                **{c: getattr(child, c) for c in TaskOut.model_fields
-                   if c not in ("assignee_ids", "sub_tasks") and hasattr(child, c)},
-                assignee_ids=child_assignee_ids,
-                sub_tasks=[],
-            ))
-
-    return TaskOut(
-        **{c: getattr(task, c) for c in TaskOut.model_fields
-           if c not in ("assignee_ids", "sub_tasks") and hasattr(task, c)},
+    return SubTaskResponse(
+        **{f: getattr(task, f) for f in SubTaskResponse.model_fields
+           if f != "assignee_ids" and hasattr(task, f)},
         assignee_ids=assignee_ids,
-        sub_tasks=sub_tasks,
     )

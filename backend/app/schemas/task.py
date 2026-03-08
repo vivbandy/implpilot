@@ -42,19 +42,48 @@ class TaskUpdate(BaseModel):
     order: int | None = None
 
 
-# ─── Task Out ─────────────────────────────────────────────────────────────────
+# ─── Response schemas ─────────────────────────────────────────────────────────
 
-class AssigneeOut(BaseModel):
-    user_id: uuid.UUID
+class SubTaskResponse(BaseModel):
+    """
+    Response schema for sub-tasks.
+
+    Intentionally omits sub_tasks — max nesting depth is 1.
+    A sub-task response never carries children.
+    """
+    id: uuid.UUID
+    project_id: uuid.UUID
+    phase_id: uuid.UUID
+    parent_task_id: uuid.UUID       # always non-null for sub-tasks
+    title: str
+    description: str | None
+    status: TaskStatus
+    priority: TaskPriority
+    start_date: date | None
+    due_date: date | None
+    completed_at: datetime | None
+    matrix_quadrant: MatrixQuadrant | None   # always None for sub-tasks
+    matrix_override: bool
+    order: int
+    created_by: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+    assignee_ids: list[uuid.UUID] = []
 
     model_config = {"from_attributes": True}
 
 
-class TaskOut(BaseModel):
+class TaskResponse(BaseModel):
+    """
+    Response schema for top-level tasks.
+
+    sub_tasks is list[SubTaskResponse] — the type difference enforces
+    that sub-task objects in a response can never themselves carry children.
+    """
     id: uuid.UUID
     project_id: uuid.UUID
     phase_id: uuid.UUID
-    parent_task_id: uuid.UUID | None
+    parent_task_id: uuid.UUID | None    # None for top-level tasks
     title: str
     description: str | None
     status: TaskStatus
@@ -69,7 +98,7 @@ class TaskOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     assignee_ids: list[uuid.UUID] = []
-    sub_tasks: list["TaskOut"] = []
+    sub_tasks: list[SubTaskResponse] = []   # typed as SubTaskResponse, not TaskResponse
 
     model_config = {"from_attributes": True}
 
