@@ -1,0 +1,112 @@
+/* ═══════════════════════════════════════════════════════════
+   ImplPilot Design Tokens — Section 10.2
+   All colors, spacing, typography defined here as CSS custom
+   properties. Components reference these via Tailwind token
+   classes (bg-surface, text-primary, etc.) — never raw hex.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Surfaces ─────────────────────────────────────────── */
+  --color-bg-app:        #F5F6F8;   /* page background — very light gray */
+  --color-bg-surface:    #FFFFFF;   /* card / panel background */
+  --color-bg-subtle:     #F0F1F3;   /* secondary surface, hover states */
+  --color-bg-overlay:    #FFFFFF;   /* modals, slide-overs */
+
+  /* ─── Borders ───────────────────────────────────────────── */
+  --color-border:        #E4E6EA;   /* default border — subtle, not harsh */
+  --color-border-strong: #C5C7D4;   /* emphasized border, active inputs */
+
+  /* ─── Text ──────────────────────────────────────────────── */
+  --color-text-primary:  #323338;   /* near-black, main body text */
+  --color-text-secondary:#676879;   /* secondary / meta text */
+  --color-text-disabled: #C5C7D4;   /* placeholder, disabled */
+  --color-text-inverse:  #FFFFFF;   /* text on dark backgrounds */
+
+  /* ─── Brand / Interactive ───────────────────────────────── */
+  --color-brand:         #0073EA;   /* primary action — links, buttons, focus rings */
+  --color-brand-hover:   #0060C2;   /* hover state */
+  --color-brand-light:   #E8F3FF;   /* brand tint for selected states, badge bg */
+
+  /* ─── Status Colors (muted, not neon) ───────────────────── */
+  /* Use these for status pills, priority dots, phase indicators */
+  --color-status-green:     #00C875;   /* completed, healthy */
+  --color-status-green-bg:  #E5F9F0;
+  --color-status-yellow:    #FDAB3D;   /* in progress, needs attention */
+  --color-status-yellow-bg: #FFF3E0;
+  --color-status-red:       #E2445C;   /* blocked, at risk, overdue */
+  --color-status-red-bg:    #FDEEF1;
+  --color-status-purple:    #A25DDC;   /* not started */
+  --color-status-purple-bg: #F3E9FB;
+  --color-status-gray:      #C5C7D4;   /* cancelled, pending */
+  --color-status-gray-bg:   #F0F1F3;
+
+  /* ─── Priority Colors ───────────────────────────────────── */
+  --color-priority-critical: #E2445C;
+  --color-priority-high:     #FDAB3D;
+  --color-priority-medium:   #0073EA;
+  --color-priority-low:      #C5C7D4;
+
+  /* ─── Shadows (subtle only) ─────────────────────────────── */
+  --shadow-card:    0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.10);
+  --shadow-modal:   0 8px 32px rgba(0, 0, 0, 0.12);
+
+  /* ─── Spacing scale ─────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ─── Border Radius ─────────────────────────────────────── */
+  --radius-sm:  4px;    /* inputs, small chips */
+  --radius-md:  6px;    /* cards, buttons */
+  --radius-lg:  8px;    /* modals, panels */
+  --radius-pill: 999px; /* status pills only */
+
+  /* ─── Typography ─────────────────────────────────────────── */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-size-xs:  11px;
+  --font-size-sm:  12px;
+  --font-size-md:  14px;   /* base body size */
+  --font-size-lg:  16px;
+  --font-size-xl:  18px;
+  --font-size-2xl: 22px;
+  --font-size-3xl: 28px;
+  --font-weight-regular:  400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+  --line-height-tight:   1.3;
+  --line-height-normal:  1.5;
+  --line-height-relaxed: 1.7;
+
+  /* ─── shadcn/ui variable aliases ────────────────────────── */
+  /* shadcn components expect these specific variable names.   */
+  /* We alias them to our tokens so shadcn stays consistent    */
+  /* with the design system instead of its default slate theme. */
+  --background:       var(--color-bg-app);
+  --foreground:       var(--color-text-primary);
+  --card:             var(--color-bg-surface);
+  --card-foreground:  var(--color-text-primary);
+  --popover:          var(--color-bg-overlay);
+  --popover-foreground: var(--color-text-primary);
+  --primary:          var(--color-brand);
+  --primary-foreground: var(--color-text-inverse);
+  --secondary:        var(--color-bg-subtle);
+  --secondary-foreground: var(--color-text-primary);
+  --muted:            var(--color-bg-subtle);
+  --muted-foreground: var(--color-text-secondary);
+  --accent:           var(--color-brand-light);
+  --accent-foreground: var(--color-brand);
+  --destructive:      var(--color-status-red);
+  --destructive-foreground: var(--color-text-inverse);
+  --border:           var(--color-border);
+  --input:            var(--color-border);
+  --ring:             var(--color-brand);
+  --radius:           var(--radius-md);
+}

@@ -1,0 +1,49 @@
+/* Inter font — installed from Google Fonts per Section 10.2 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Design tokens must be imported before Tailwind directives */
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Global resets ────────────────────────────────────────── */
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-md);
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-app);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: var(--line-height-normal);
+  }
+
+  #root {
+    height: 100%;
+  }
+
+  /* Focus ring uses brand color — accessible without being noisy */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* Remove focus ring for mouse users; keep for keyboard */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
