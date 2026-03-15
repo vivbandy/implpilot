@@ -177,6 +177,54 @@ export interface Contact {
   created_at: string
 }
 
+// ─── Notes ───────────────────────────────────────────────────────
+
+export type NoteEntityType = 'project' | 'phase' | 'task' | 'feature_request' | 'escalation'
+
+export interface Note {
+  id: string
+  entity_type: NoteEntityType
+  entity_id: string
+  content: string
+  author_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface NoteCreate {
+  entity_type: NoteEntityType
+  entity_id: string
+  content: string
+  project_id: string
+}
+
+// ─── External Tickets ────────────────────────────────────────────
+
+export type ExternalTicketEntityType = 'task' | 'feature_request' | 'escalation'
+export type ExternalTicketSystem = 'jira' | 'zendesk' | 'other'
+
+export interface ExternalTicket {
+  id: string
+  entity_type: ExternalTicketEntityType
+  entity_id: string
+  ticket_system: ExternalTicketSystem
+  ticket_id: string | null
+  url: string
+  label: string | null
+  status_cache: string | null
+  last_synced_at: string | null
+  created_at: string
+}
+
+export interface ExternalTicketCreate {
+  entity_type: ExternalTicketEntityType
+  entity_id: string
+  ticket_system: ExternalTicketSystem
+  ticket_id?: string
+  url: string
+  label?: string
+}
+
 // ─── Auth ────────────────────────────────────────────────────────
 
 export interface AuthTokenResponse {
