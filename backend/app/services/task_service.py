@@ -268,6 +268,32 @@ async def get_my_matrix(user_id: uuid.UUID, db: AsyncSession) -> list[Task]:
     return list(result.scalars().all())
 
 
+async def get_my_tasks(user_id: uuid.UUID, db: AsyncSession) -> list[Task]:
+    """
+    Return all top-level tasks assigned to the current user for the Dashboard My Tasks table.
+
+    Unlike get_my_matrix, this includes all statuses except cancelled — the user
+    needs to see completed tasks in the table context. Ordered by due_date ascending
+    (soonest due first, nulls last).
+    """
+    assignee_result = await db.execute(
+        select(TaskAssignee.task_id).where(TaskAssignee.user_id == user_id)
+    )
+    task_ids = list(assignee_result.scalars().all())
+
+    if not task_ids:
+        return []
+
+    result = await db.execute(
+        select(Task).where(
+            Task.id.in_(task_ids),
+            Task.parent_task_id.is_(None),       # top-level only — sub-tasks excluded
+            Task.status != TaskStatus.CANCELLED,
+        ).order_by(Task.due_date.asc().nullslast(), Task.priority.desc())
+    )
+    return list(result.scalars().all())
+
+
 async def matrix_classify(task_id: uuid.UUID, db: AsyncSession) -> tuple[Task, str]:
     """
     Re-run deterministic matrix classification for a task and save the result.

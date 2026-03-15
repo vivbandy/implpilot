@@ -41,6 +41,21 @@ async def get_my_matrix(
     return [await _task_to_response(t, db) for t in tasks]
 
 
+@router.get("/my-tasks", response_model=list[TaskResponse])
+async def get_my_tasks(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[TaskResponse]:
+    """
+    Return all top-level tasks assigned to the current user for the Dashboard My Tasks table.
+
+    Includes all statuses except cancelled — ordered by due_date asc.
+    Must be declared before /{task_id} for the same reason as my-matrix.
+    """
+    tasks = await task_service.get_my_tasks(current_user.id, db)
+    return [await _task_to_response(t, db) for t in tasks]
+
+
 @router.post("/matrix-classify", response_model=MatrixClassifyResponse)
 async def matrix_classify(
     payload: MatrixClassifyRequest,

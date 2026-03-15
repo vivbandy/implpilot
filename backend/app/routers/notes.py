@@ -1,19 +1,41 @@
 """Notes router — CRUD wired to tag processing pipeline."""
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.related_objects import Note
-from app.models.tag import TagEntityType
+from app.models.related_objects import Note, NoteEntityType
+from app.models.tag import TagEntityType as TagEntityTypeEnum
 from app.models.user import User
 from app.schemas.note import NoteCreate, NoteOut, NoteUpdate
 from app.services.tag_service import process_tags
 from app.utils.dependencies import get_current_user
 
 router = APIRouter()
+
+
+@router.get("", response_model=list[NoteOut])
+async def list_notes(
+    entity_type: NoteEntityType = Query(...),
+    entity_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[NoteOut]:
+    """
+    List all notes for a given entity.
+
+    Ordered newest-first so the UI shows the most recent note at the top.
+    entity_type and entity_id are required — there is no global note list endpoint.
+    """
+    result = await db.execute(
+        select(Note)
+        .where(Note.entity_type == entity_type, Note.entity_id == entity_id)
+        .order_by(Note.created_at.desc())
+    )
+    notes = result.scalars().all()
+    return [NoteOut.model_validate(n) for n in notes]
 
 
 @router.post("", response_model=NoteOut, status_code=201)
