@@ -1,5 +1,11 @@
-# ImplPilot — MVP Specification v1.2
+# ImplPilot — MVP Specification v1.3
 > **For Claude Code**: This document is the complete implementation spec. Build this top-down, module by module, following the sequence in Section 11. Ask no questions — all decisions are made here. If something is ambiguous, apply the principle: *simplest working solution that doesn't close off future extensibility*.
+>
+> **v1.3 changes from v1.2**:
+> - Section 3.4: Added `task_date_changes` table — due date edit history with reason tracking
+> - Section 9: Added `POST /tasks/{id}/due-date` endpoint (replaces free-edit of due_date via PUT)
+> - Section 10.5: Added TaskDetailSlideOver design note for due date reason picker UI
+> - Section 11: Step 10 updated — due date history backend + UI built before report builder
 >
 > **v1.2 changes from v1.1**:
 > - Section 3.3: Project Phases data model (new table, sits between projects and tasks)
@@ -242,6 +248,29 @@ task_assignees
   PRIMARY KEY (task_id, user_id)
 ```
 
+task_date_changes
+  id              UUID PK
+  task_id         UUID FK → tasks.id NOT NULL
+  old_date        DATE NULL         -- NULL if no prior due date was set
+  new_date        DATE NULL         -- NULL if due date was cleared
+  reason_type     ENUM('feature_delay', 'scope_change', 'resourcing', 'other') NOT NULL
+  reason_text     TEXT NULL         -- required when reason_type = 'other', NULL otherwise
+  changed_by      UUID FK → users.id
+  changed_at      TIMESTAMP NOT NULL DEFAULT now()
+
+-- Due date changes are append-only. Never update or delete rows.
+-- The current due_date lives on tasks.due_date as before.
+-- task_date_changes is the audit trail — used by the report builder (Step 10)
+-- to surface patterns like "3 tasks delayed due to scope change".
+```
+
+**Due date change rules (enforced in `task_service.py`):**
+- Due date changes MUST go through `POST /tasks/{id}/due-date` — not through `PUT /tasks/{id}`
+- `PUT /tasks/{id}` intentionally does NOT accept `due_date` to enforce the audit trail
+- `reason_text` is required when `reason_type = 'other'`; ignored (set to NULL) for all other reason types
+- Both top-level tasks and sub-tasks support due date history
+
+```sql
 **Sub-task rules (enforced in `task_service.py`):**
 - A sub-task's `phase_id` must match its parent's `phase_id`. If they differ, reject with a 422 error.
 - A sub-task cannot have `parent_task_id` pointing to another sub-task (max 1 level of nesting).
@@ -657,14 +686,38 @@ GET    /phases/{id}/tasks                       → all top-level tasks for this
 ```
 POST   /phases/{id}/tasks                      → create task in a phase
 GET    /tasks/{id}                             → includes sub_tasks array
-PUT    /tasks/{id}
+PUT    /tasks/{id}                             → NOTE: does NOT accept due_date (use /due-date endpoint)
 DELETE /tasks/{id}
 POST   /tasks/{id}/assignees
 DELETE /tasks/{id}/assignees/{user_id}
 POST   /tasks/{id}/subtasks                    → create sub-task under this task
 GET    /tasks/{id}/subtasks                    → list sub-tasks
+POST   /tasks/{id}/due-date                   → change due date with mandatory reason (see below)
+GET    /tasks/{id}/due-date/history           → list all due date changes for this task
 POST   /tasks/matrix-classify
 GET    /tasks/my-matrix                        → top-level tasks only
+GET    /tasks/my-tasks                         → all non-cancelled top-level tasks assigned to current user
+```
+
+**`POST /tasks/{id}/due-date` request body:**
+```python
+class DueDateChangeRequest(BaseModel):
+    new_date: date | None           # None = clear the due date
+    reason_type: Literal['feature_delay', 'scope_change', 'resourcing', 'other']
+    reason_text: str | None = None  # required when reason_type = 'other'
+```
+
+**`GET /tasks/{id}/due-date/history` response:**
+```python
+class DueDateChangeOut(BaseModel):
+    id: UUID
+    task_id: UUID
+    old_date: date | None
+    new_date: date | None
+    reason_type: str
+    reason_text: str | None
+    changed_by: UUID | None
+    changed_at: datetime
 ```
 
 > `GET /projects/{id}/tasks` still works as a convenience endpoint returning all tasks flat (for reports/export). Filtered by `parent_task_id IS NULL` by default; pass `?include_subtasks=true` to include all.
@@ -1057,7 +1110,22 @@ Active nav item:
 - Flat list, not kanban (kanban is too heavy for this use case)
 - Sortable by due date, priority
 - "Add task" row at the bottom of the list (click to expand inline form — no modal)
+  - Inline form fields: title (required), due date (optional)
+  - New tasks are auto-assigned to the creating user as a default
 - Sub-tasks expand/collapse under parent with a toggle chevron
+
+**TaskDetailSlideOver — due date editing:**
+- Due date is displayed as a clickable field (not a static label)
+- Clicking it opens an inline date picker + reason picker
+- Reason picker options (radio group):
+  - Feature delay
+  - Scope change
+  - Resourcing
+  - Other — reveals a required free-text input
+- On confirm: calls `POST /tasks/{id}/due-date`; updates the displayed date immediately
+- A "View history" link below the date field expands a collapsed list of past date changes
+  with reason and timestamp — sourced from `GET /tasks/{id}/due-date/history`
+- Assignee picker is deferred (requires `GET /users` endpoint — not yet built)
 
 ---
 
@@ -1149,15 +1217,20 @@ Build in this exact order. Each step must leave the app runnable.
 4. "My Matrix" tab on Dashboard
 
 ### Step 10 — AI & Reports Module
-1. `ai_service.py` — updated prompts with phase context
-2. `report_service.py` — phase_summary in context assembly
-3. `health_calculator.py` — phase penalties in score
-4. AI matrix classification for unclassified tasks
-5. Report endpoints
-6. `ReportBlockEditor.tsx` + `PhaseProgressBlock` component
-7. `ChartBlock.tsx` (Recharts)
-8. `AggregateReportBuilder.tsx`
-9. PDF export
+1. **Due date history (backend):** `task_date_changes` model + Alembic migration,
+   `POST /tasks/{id}/due-date` endpoint, `GET /tasks/{id}/due-date/history` endpoint
+2. **Due date history (frontend):** editable due date in `TaskDetailSlideOver` —
+   date picker + reason picker (feature_delay / scope_change / resourcing / other),
+   history list below date field
+3. `ai_service.py` — updated prompts with phase context + due date change signals
+4. `report_service.py` — phase_summary + date change summary in context assembly
+5. `health_calculator.py` — phase penalties in score
+6. AI matrix classification for unclassified tasks
+7. Report endpoints
+8. `ReportBlockEditor.tsx` + `PhaseProgressBlock` component
+9. `ChartBlock.tsx` (Recharts)
+10. `AggregateReportBuilder.tsx`
+11. PDF export
 
 ### Step 11 — Notifications Module
 1. APScheduler daily jobs (overdue, inactive, phase deadline approaching)
