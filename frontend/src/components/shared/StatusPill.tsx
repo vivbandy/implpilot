@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils'
-import type { TaskStatus, PhaseStatus } from '@/types'
+import type { TaskStatus, PhaseStatus, ProjectStatus } from '@/types'
 
-// All possible statuses across tasks and phases
-type AnyStatus = TaskStatus | PhaseStatus
+// All possible statuses across tasks, phases, and projects
+type AnyStatus = TaskStatus | PhaseStatus | ProjectStatus
 
 interface StatusPillProps {
   status: AnyStatus
@@ -38,7 +38,10 @@ const STATUS_STYLES: Record<AnyStatus, string> = {
   // Phase statuses
   pending:  'bg-status-gray-bg text-status-gray',
   active:   'bg-status-yellow-bg text-status-yellow',
-  // completed is shared — already defined above
+
+  // Project-specific statuses
+  at_risk:  'bg-status-red-bg text-status-red',
+  on_hold:  'bg-status-gray-bg text-status-gray',
 }
 
 const STATUS_LABELS: Record<AnyStatus, string> = {
@@ -49,4 +52,6 @@ const STATUS_LABELS: Record<AnyStatus, string> = {
   cancelled:    'Cancelled',
   pending:      'Pending',
   active:       'Active',
+  at_risk:      'At Risk',
+  on_hold:      'On Hold',
 }

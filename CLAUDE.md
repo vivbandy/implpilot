@@ -40,8 +40,8 @@ You:
   → close session
 
 ## Current build status
-Step completed: 7 — Frontend Foundation
-Next step: Step 8 — Frontend Core Pages
+Step completed: 8 — Frontend Core Pages
+Next step: Step 9 — Eisenhower Matrix
 
 ## Model
 Use Sonnet 4.6 (default on Pro). Keep sessions scoped to one step at a time

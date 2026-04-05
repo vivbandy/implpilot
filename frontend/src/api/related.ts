@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiDelete } from './client'
+import { apiGet, apiPost, apiDelete } from './client'
 import type { FeatureRequest, Escalation, Contact } from '@/types'
 
 // ─── Feature Requests ─────────────────────────────────────────────────────────

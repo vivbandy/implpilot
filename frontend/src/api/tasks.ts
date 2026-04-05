@@ -42,3 +42,8 @@ export function createSubTask(taskId: string, payload: SubTaskCreate): Promise<S
 export function getMyTasks(): Promise<Task[]> {
   return apiGet<Task[]>('/tasks/my-tasks')
 }
+
+// user_id sent as query param — FastAPI treats non-model POST params as query params
+export function addAssignee(taskId: string, userId: string): Promise<void> {
+  return apiPost<void>(`/tasks/${taskId}/assignees?user_id=${userId}`)
+}

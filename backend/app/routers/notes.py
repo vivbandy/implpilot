@@ -130,7 +130,7 @@ async def _run_tag_processing(
     *,
     content: str,
     project_id: uuid.UUID,
-    entity_type: TagEntityType,
+    entity_type: TagEntityTypeEnum,
     entity_id: uuid.UUID,
     author_id: uuid.UUID,
 ) -> None:

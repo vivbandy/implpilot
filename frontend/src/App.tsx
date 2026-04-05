@@ -5,6 +5,8 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AppShell } from '@/components/layout/AppShell'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
+import Projects from '@/pages/Projects'
+import ProjectDetail from '@/pages/ProjectDetail'
 
 export default function App() {
   const hydrateFromStorage = useAuthStore((s) => s.hydrateFromStorage)
@@ -25,7 +27,8 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            {/* Step 8 will add: /projects, /projects/:id, /tasks/:id */}
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/:projectId" element={<ProjectDetail />} />
             {/* Step 10 will add: /reports */}
             {/* Step 12 will add: /settings */}
           </Route>

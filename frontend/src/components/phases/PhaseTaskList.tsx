@@ -3,6 +3,8 @@ import { Plus, Loader2 } from 'lucide-react'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { SubTaskList } from '@/components/tasks/SubTaskList'
 import { listPhaseTasks, createPhaseTask } from '@/api/phases'
+import { addAssignee } from '@/api/tasks'
+import { useAuthStore } from '@/store/authStore'
 import type { Task } from '@/types'
 
 interface PhaseTaskListProps {
@@ -19,9 +21,12 @@ export function PhaseTaskList({ phaseId, phaseStatus, onTaskClick }: PhaseTaskLi
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const currentUser = useAuthStore((s) => s.user)
+
   // Inline add-task form state
   const [adding, setAdding] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [newDueDate, setNewDueDate] = useState('')
   const [saving, setSaving] = useState(false)
 
   const fetchTasks = useCallback(async () => {
@@ -49,9 +54,22 @@ export function PhaseTaskList({ phaseId, phaseStatus, onTaskClick }: PhaseTaskLi
 
     setSaving(true)
     try {
-      const task = await createPhaseTask(phaseId, { title })
+      const task = await createPhaseTask(phaseId, {
+        title,
+        due_date: newDueDate || undefined,
+      })
+
+      // Auto-assign to the creating user as a default so the task appears in My Tasks.
+      // The assignee picker (to change/add others) is deferred — needs GET /users endpoint.
+      if (currentUser) {
+        await addAssignee(task.id, currentUser.id)
+        // Optimistically update the task's assignee_ids in local state
+        task.assignee_ids = [currentUser.id]
+      }
+
       setTasks((prev) => [...prev, task])
       setNewTitle('')
+      setNewDueDate('')
       setAdding(false)
     } catch {
       // Silently fail — user can retry
@@ -90,8 +108,8 @@ export function PhaseTaskList({ phaseId, phaseStatus, onTaskClick }: PhaseTaskLi
           <TaskCard task={task} onClick={() => onTaskClick(task)} />
           <SubTaskList
             subTasks={task.sub_tasks}
-            onSubTaskClick={(st) => {
-              // Sub-task click — pass parent task to slide-over so context is available
+            onSubTaskClick={() => {
+              // Sub-task click — open parent task slide-over so full context is available
               onTaskClick(task)
             }}
           />
@@ -102,30 +120,42 @@ export function PhaseTaskList({ phaseId, phaseStatus, onTaskClick }: PhaseTaskLi
       {phaseStatus === 'active' && (
         <div className="mt-2">
           {adding ? (
-            <form onSubmit={(e) => void handleAddTask(e)} className="flex items-center gap-2">
-              <input
-                autoFocus
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Task title…"
-                className="flex-1 border border-border-default rounded-sm px-3 py-2 text-md bg-bg-surface focus:outline-none focus:border-border-strong focus:ring-2 focus:ring-brand-light"
-                disabled={saving}
-              />
-              <button
-                type="submit"
-                disabled={saving || !newTitle.trim()}
-                className="px-4 py-2 bg-brand text-white text-md font-medium rounded-md hover:bg-brand-hover disabled:opacity-50 transition-colors"
-              >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : 'Add'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAdding(false); setNewTitle('') }}
-                className="px-3 py-2 border border-border-default text-md text-text-primary rounded-md hover:bg-bg-subtle transition-colors"
-              >
-                Cancel
-              </button>
+            <form onSubmit={(e) => void handleAddTask(e)} className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="Task title…"
+                  className="flex-1 border border-border-default rounded-sm px-3 py-2 text-md bg-bg-surface focus:outline-none focus:border-border-strong focus:ring-2 focus:ring-brand-light"
+                  disabled={saving}
+                />
+                <input
+                  type="date"
+                  value={newDueDate}
+                  onChange={(e) => setNewDueDate(e.target.value)}
+                  title="Due date (optional)"
+                  className="border border-border-default rounded-sm px-3 py-2 text-md bg-bg-surface focus:outline-none focus:border-border-strong focus:ring-2 focus:ring-brand-light"
+                  disabled={saving}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={saving || !newTitle.trim()}
+                  className="px-4 py-2 bg-brand text-white text-md font-medium rounded-md hover:bg-brand-hover disabled:opacity-50 transition-colors"
+                >
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : 'Add task'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAdding(false); setNewTitle(''); setNewDueDate('') }}
+                  className="px-3 py-2 border border-border-default text-md text-text-primary rounded-md hover:bg-bg-subtle transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           ) : (
             <button
