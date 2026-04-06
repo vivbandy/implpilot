@@ -43,6 +43,11 @@ export function getMyTasks(): Promise<Task[]> {
   return apiGet<Task[]>('/tasks/my-tasks')
 }
 
+// Dashboard My Matrix — top-level tasks assigned to the current user for Eisenhower matrix
+export function getMyMatrix(): Promise<Task[]> {
+  return apiGet<Task[]>('/tasks/my-matrix')
+}
+
 // user_id sent as query param — FastAPI treats non-model POST params as query params
 export function addAssignee(taskId: string, userId: string): Promise<void> {
   return apiPost<void>(`/tasks/${taskId}/assignees?user_id=${userId}`)
