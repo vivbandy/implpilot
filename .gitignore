@@ -71,3 +71,4 @@ frontend/build/
 *.tmp
 *.temp
 /tmp/
+.DS_Store
