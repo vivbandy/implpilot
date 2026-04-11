@@ -30,7 +30,8 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { Loader2, HelpCircle } from 'lucide-react'
+import { Loader2, HelpCircle, Info } from 'lucide-react'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import { cn } from '@/lib/utils'
 import { PriorityDot } from '@/components/shared/PriorityDot'
 import { StatusPill } from '@/components/shared/StatusPill'
@@ -281,6 +282,72 @@ function UnclassifiedArea({ tasks, activeTaskId, onTaskClick }: UnclassifiedArea
   )
 }
 
+// ─── Classification legend ────────────────────────────────────────────────────
+
+/**
+ * Explains the auto-classification rules so users know how to influence
+ * which quadrant a task lands in without manual drag overrides.
+ *
+ * Design decision (Option A): overdue date alone does NOT make a task
+ * important — only priority=high/critical or status=blocked does.
+ * Users should set priority explicitly to control importance.
+ */
+function ClassificationLegend() {
+  return (
+    <Tooltip.Provider delayDuration={200}>
+      <div className="flex items-center gap-2 mb-4">
+        <p className="text-sm text-text-secondary">
+          Tasks are auto-classified by urgency and importance.
+        </p>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <button
+              className="text-text-disabled hover:text-text-secondary transition-colors"
+              aria-label="How classification works"
+            >
+              <Info size={15} />
+            </button>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content
+              side="bottom"
+              align="start"
+              sideOffset={6}
+              className="z-50 max-w-sm rounded-md bg-bg-surface border border-border-default shadow-popover p-4 text-sm text-text-primary"
+            >
+              <p className="font-semibold mb-2">How tasks are classified</p>
+
+              <p className="font-medium text-text-secondary uppercase tracking-wide text-xs mb-1">
+                Urgent — any of:
+              </p>
+              <ul className="list-disc list-inside space-y-0.5 text-text-secondary mb-3">
+                <li>Due date is today, overdue, or within 3 days</li>
+                <li>Status is <span className="text-text-primary font-medium">Blocked</span></li>
+                <li>Priority is <span className="text-text-primary font-medium">Critical</span></li>
+              </ul>
+
+              <p className="font-medium text-text-secondary uppercase tracking-wide text-xs mb-1">
+                Important — any of:
+              </p>
+              <ul className="list-disc list-inside space-y-0.5 text-text-secondary mb-3">
+                <li>Priority is <span className="text-text-primary font-medium">High</span> or <span className="text-text-primary font-medium">Critical</span></li>
+                <li>Status is <span className="text-text-primary font-medium">Blocked</span></li>
+              </ul>
+
+              <p className="text-text-secondary text-xs border-t border-border-default pt-2 mt-1">
+                To land in <strong className="text-text-primary">Do</strong>, a task must be both urgent <em>and</em> important — set priority to High or Critical. An overdue task with Medium priority lands in <strong className="text-text-primary">Delegate</strong> because it is urgent but not marked important.
+                <br /><br />
+                Drag any card to override its quadrant manually.
+              </p>
+              <Tooltip.Arrow className="fill-border-default" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </div>
+    </Tooltip.Provider>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function EisenhowerMatrix({ tasks, loading, onTasksChange, onTaskClick }: EisenhowerMatrixProps) {
@@ -371,6 +438,9 @@ export function EisenhowerMatrix({ tasks, loading, onTasksChange, onTaskClick }:
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      {/* Classification rules legend */}
+      <ClassificationLegend />
+
       {/* Unclassified holding area */}
       <UnclassifiedArea
         tasks={byQuadrant(null)}
